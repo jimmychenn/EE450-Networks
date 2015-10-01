@@ -114,47 +114,53 @@ void mealy(int msock)
   char str1[20];
   enum state CurrentState;
   CurrentState = red;
-  switch (CurrentState) {
-    red: case red:
+  strcpy(buf,"JimmyC");
+  mealysend(msock,buf,strlen(buf));
+  while (1) {
+    if(CurrentState == red)
     {
       printf("Currently in state: red \n");
       while(1){
         printf("Enter \'go\' to start the communication: ");
         scanf("%s", str1);
-        if(strncmp(str1,"go",2) == 0){
+        if(strncmp(str1,"go",3) == 0){
+          strcpy(buf,"YO");
+          mealysend(msock,buf,strlen(buf));
           CurrentState = green;
           break;
         }
       }
     }
-    green: case green:
+    if(CurrentState == green)
     {
       printf("Currently in state: green\n");
       do{
-        strcpy(buf,"YO");
-        mealysend(msock,buf,strlen(buf));
         numbytes = mealyrecvto(msock, buf, MAXDATASIZE, 5);
-        if (numbytes == -1) {
-          printf("Client timeout.\n");
+        if(numbytes == -1){
+          printf("Client timeout.\n");          
+          strcpy(buf,"YO");
+          mealysend(msock,buf,strlen(buf));
         }
-        else if (numbytes == 0) {
-          printf("Client stop; server socket closed.\n");
-        }
-        else{
+        else if(strcmp(buf,"DUDE") == 0){
           strcpy(buf,"SUP");
           mealysend(msock,buf,strlen(buf));
           CurrentState = blue;
         }
+        else if (numbytes == 0) {
+          printf("Client stop; server socket closed.\n");
+          break;
+        }
+
       } while(numbytes == -1);
     }
-    blue: case blue:
+    if(CurrentState == blue)
     {
       printf("Currently in state: blue\n");
       while(1)
       {
         printf("Enter \'shut\' to continue: ");
         scanf("%s", str1);
-        if(strncmp(str1, "shut", 4) == 0)
+        if(strcmp(str1, "shut") == 0)
         {
           strcpy(buf,"LOCK");
           mealysend(msock,buf,strlen(buf));
@@ -163,28 +169,27 @@ void mealy(int msock)
         }
       }
     }
-    orange: case orange:
+    if(CurrentState == orange)
     {
       printf("Currently in state: orange\n");
       char msg[10] = "";
       char cmd[10] = "";
       while(1){
-        printf("Enter a number to guess code or enter \'stop\': ");
+        printf("Enter a number from 0-9 to guess code or enter \'stop\': ");
         //scanf("%d", guess);
         scanf("%s",cmd);
-        printf("You entered: %s\n",cmd);
+        //printf("You entered: %s\n",cmd);
         if( strcmp(cmd,"stop") == 0){
           strcpy(buf, "LATER");
           mealysend(msock,buf,strlen(buf));          
           CurrentState = yellow;
-          goto yellow;
           break;
         }
-        else if(isdigit(cmd[0])){
+        else if(isdigit(cmd[0]) && cmd[1] == '\0'){
           int guess = (int)(cmd[0] - '0');
           if(guess >= 0 && guess <= 9)
           {
-            printf("Sending: TRY%d\n", guess);
+            //printf("Sending: TRY%d\n", guess);
             sprintf(msg, "TRY%d", guess);
             strcpy(buf, msg);
             mealysend(msock,buf,strlen(buf));
@@ -197,28 +202,26 @@ void mealy(int msock)
         }
       }
     }
-    purple: case purple:
+    if(CurrentState == purple)
     {
       printf("Currently in state: purple\n");
       numbytes = mealyrecvto(msock, buf, MAXDATASIZE, 5);
-      printf("Received buffer: %s\n",buf);
+      //printf("Received buffer: %s\n",buf);
       if (numbytes == -1) {
         CurrentState = orange;
-        goto orange;
         printf("Client timeout.\n");
       }
       else if (numbytes == 0) {
         printf("Client stop; server socket closed.\n");
+        break;
       }
       else if( strncmp(buf, "CLACK",5) == 0) { 
         CurrentState = orange;
         //printf("Comparing to \'CLACK\' and setting state to orange\n");
-        goto orange;
       }
       else if( strncmp(buf, "CLICK",5) == 0){
         CurrentState = blue;
         //printf("Comparing to \'CLICK\' and setting state to blue\n");
-        goto blue;
       }
       else if( strncmp(buf, "BZZT",4) == 0){
         strcpy(buf, "LATER");
@@ -228,14 +231,14 @@ void mealy(int msock)
       }
       else{
         CurrentState = purple;
-        goto purple;
       }
     }
-    yellow: case yellow:
+    if(CurrentState == yellow)
     {
       printf("Currently in state: yellow\n");
       numbytes = mealyrecvto(msock, buf, MAXDATASIZE, 5);
-      printf("Received buffer: %s\n",buf);
+      //printf("Received buffer: %s\n",buf);
+      //Send later if client timeout otherwise send BYE
       while(numbytes == -1){
         strcpy(buf, "LATER");
         mealysend(msock,buf,strlen(buf));
@@ -244,7 +247,6 @@ void mealy(int msock)
       strcpy(buf, "BYE");
       mealysend(msock,buf,strlen(buf));
       CurrentState = red;
-      goto red;
     }
   }
 
